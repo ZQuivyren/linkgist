@@ -9,7 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      clicks: {
+        Row: {
+          browser: string | null
+          city: string | null
+          clicked_at: string
+          country: string | null
+          device: string | null
+          id: string
+          ip: string | null
+          link_id: string
+          os: string | null
+          referrer: string | null
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device?: string | null
+          id?: string
+          ip?: string | null
+          link_id: string
+          os?: string | null
+          referrer?: string | null
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device?: string | null
+          id?: string
+          ip?: string | null
+          link_id?: string
+          os?: string | null
+          referrer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      links: {
+        Row: {
+          clicks: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_custom: boolean
+          original_url: string
+          qr_code: string | null
+          short_code: string
+          title: string | null
+          user_id: string | null
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_custom?: boolean
+          original_url: string
+          qr_code?: string | null
+          short_code: string
+          title?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_custom?: boolean
+          original_url?: string
+          qr_code?: string | null
+          short_code?: string
+          title?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

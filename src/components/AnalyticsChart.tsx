@@ -1,175 +1,229 @@
 
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, LineChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, BarChart, PieChart, Area, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Pie, Sector, AreaChart } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { getLinkAnalytics } from "@/utils/api";
+import { toast } from "sonner";
 
-interface AnalyticsProps {
+interface AnalyticsChartProps {
   linkId: string;
-  className?: string;
 }
 
-const AnalyticsChart: React.FC<AnalyticsProps> = ({ linkId, className }) => {
+interface ChartData {
+  clickData: Array<{ date: string; clicks: number }>;
+  deviceData: Array<{ name: string; value: number }>;
+  referrerData: Array<{ name: string; value: number }>;
+  browserData: Array<{ name: string; value: number }>;
+  totalClicks: number;
+}
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+
+const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ linkId }) => {
   const [timeRange, setTimeRange] = useState("7d");
+  const [chartData, setChartData] = useState<ChartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [clickData, setClickData] = useState<any[]>([]);
-  const [deviceData, setDeviceData] = useState<any[]>([]);
-  const [referrerData, setReferrerData] = useState<any[]>([]);
+  const [chartType, setChartType] = useState<"line" | "bar">("line");
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      
-      // Simulate API fetch with a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Generate fake data for the demo
-      const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
-      
-      // Generate click data
-      const newClickData = Array.from({ length: days }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (days - i - 1));
-        return {
-          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-          clicks: Math.floor(Math.random() * 100) + 5,
-        };
-      });
-      
-      // Generate device data
-      const newDeviceData = [
-        { name: "Desktop", value: Math.floor(Math.random() * 60) + 20 },
-        { name: "Mobile", value: Math.floor(Math.random() * 40) + 10 },
-        { name: "Tablet", value: Math.floor(Math.random() * 20) + 5 },
-      ];
-      
-      // Generate referrer data
-      const newReferrerData = [
-        { name: "Direct", value: Math.floor(Math.random() * 40) + 20 },
-        { name: "Google", value: Math.floor(Math.random() * 30) + 15 },
-        { name: "Twitter", value: Math.floor(Math.random() * 20) + 10 },
-        { name: "Facebook", value: Math.floor(Math.random() * 15) + 5 },
-        { name: "Other", value: Math.floor(Math.random() * 10) + 5 },
-      ];
-      
-      setClickData(newClickData);
-      setDeviceData(newDeviceData);
-      setReferrerData(newReferrerData);
+    if (linkId) {
+      fetchAnalytics();
+    }
+  }, [linkId, timeRange]);
+
+  const fetchAnalytics = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getLinkAnalytics(linkId, timeRange);
+      setChartData(data);
+    } catch (error) {
+      toast.error("Failed to load analytics data");
+      console.error("Error fetching analytics:", error);
+    } finally {
       setIsLoading(false);
-    };
-    
-    fetchData();
-  }, [timeRange, linkId]);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-[300px]">
+        <svg className="animate-spin h-8 w-8 text-brand-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    );
+  }
+
+  if (!chartData) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No analytics data available.</p>
+      </div>
+    );
+  }
 
   return (
-    <Card className={cn("shadow-sm border-gray-100", className)}>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Link Analytics</CardTitle>
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="Select range" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="90d">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="clicks">
-          <TabsList className="mb-4">
-            <TabsTrigger value="clicks">Clicks</TabsTrigger>
-            <TabsTrigger value="devices">Devices</TabsTrigger>
-            <TabsTrigger value="referrers">Referrers</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="clicks" className="h-[300px]">
-            {isLoading ? (
-              <div className="h-full w-full flex items-center justify-center bg-muted/20 rounded animate-pulse">
-                <span className="text-sm text-muted-foreground">Loading chart data...</span>
-              </div>
-            ) : (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="flex items-center space-x-4">
+          <Select value={chartType} onValueChange={(value: "line" | "bar") => setChartType(value)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Chart Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="line">Line Chart</SelectItem>
+              <SelectItem value="bar">Bar Chart</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Time Range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">7 Days</SelectItem>
+              <SelectItem value="30d">30 Days</SelectItem>
+              <SelectItem value="90d">90 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-muted-foreground">Total Clicks</p>
+          <p className="text-2xl font-bold">{chartData.totalClicks.toLocaleString()}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Click Trends</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={clickData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} width={30} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      background: "white", 
-                      border: "1px solid #f0f0f0",
-                      borderRadius: "8px",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-                    }} 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="clicks" 
-                    stroke="#0A84FF" 
-                    strokeWidth={2}
-                    activeDot={{ r: 6 }} 
-                    dot={{ r: 3 }}
-                  />
-                </LineChart>
+                {chartType === "line" ? (
+                  <AreaChart
+                    data={chartData.clickData}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="clicks" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} />
+                  </AreaChart>
+                ) : (
+                  <BarChart
+                    data={chartData.clickData}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="clicks" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                )}
               </ResponsiveContainer>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="devices" className="h-[300px]">
-            {isLoading ? (
-              <div className="h-full w-full flex items-center justify-center bg-muted/20 rounded animate-pulse">
-                <span className="text-sm text-muted-foreground">Loading chart data...</span>
-              </div>
-            ) : (
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Devices</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={deviceData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} width={30} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      background: "white", 
-                      border: "1px solid #f0f0f0",
-                      borderRadius: "8px",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-                    }} 
-                  />
-                  <Bar dataKey="value" fill="#0A84FF" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                <PieChart>
+                  <Pie
+                    data={chartData.deviceData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {chartData.deviceData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
               </ResponsiveContainer>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="referrers" className="h-[300px]">
-            {isLoading ? (
-              <div className="h-full w-full flex items-center justify-center bg-muted/20 rounded animate-pulse">
-                <span className="text-sm text-muted-foreground">Loading chart data...</span>
-              </div>
-            ) : (
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Browsers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={referrerData} layout="vertical" margin={{ top: 10, right: 10, left: 50, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={50} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      background: "white", 
-                      border: "1px solid #f0f0f0",
-                      borderRadius: "8px",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-                    }} 
-                  />
-                  <Bar dataKey="value" fill="#0A84FF" radius={[0, 4, 4, 0]} />
-                </BarChart>
+                <PieChart>
+                  <Pie
+                    data={chartData.browserData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {chartData.browserData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
               </ResponsiveContainer>
-            )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Referrers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData.referrerData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {chartData.referrerData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 

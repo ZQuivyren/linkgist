@@ -1,16 +1,21 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Link } from "lucide-react";
+import { shortenUrl } from "@/utils/api";
+import { useAuth } from "@/hooks/useAuth";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const UrlShortener = () => {
   const [url, setUrl] = useState("");
   const [customSlug, setCustomSlug] = useState("");
   const [shortenedUrl, setShortenedUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,19 +35,21 @@ const UrlShortener = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
     try {
-      // In a real implementation, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Execute reCAPTCHA if user is not logged in
+      let recaptchaToken = null;
+      if (!user) {
+        recaptchaToken = await recaptchaRef.current?.executeAsync();
+        recaptchaRef.current?.reset();
+      }
       
-      // Generate fake shortened URL
-      const domain = "linkgist.lovable.app";
-      const slug = customSlug || Math.random().toString(36).substring(2, 6);
-      setShortenedUrl(`https://${domain}/${slug}`);
-      
+      // Call the API to shorten the URL
+      const result = await shortenUrl(url, customSlug, recaptchaToken || undefined);
+      setShortenedUrl(result.shortUrl);
       toast.success("URL shortened successfully!");
     } catch (error) {
-      toast.error("Failed to shorten URL. Please try again.");
+      console.error("Error shortening URL:", error);
+      // Toast error is handled in the API function
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +133,17 @@ const UrlShortener = () => {
                   "Shorten URL"
                 )}
               </Button>
+              
+              {/* Hidden reCAPTCHA for anonymous users */}
+              {!user && (
+                <div className="hidden">
+                  <ReCAPTCHA
+                    ref={recaptchaRef}
+                    size="invisible"
+                    sitekey="6LeDafwqAAAAAFxeN35TSHxbsvAMysFAkCDUiwVP"
+                  />
+                </div>
+              )}
             </motion.form>
           ) : (
             <motion.div
