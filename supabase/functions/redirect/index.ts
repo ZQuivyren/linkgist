@@ -8,6 +8,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("Received redirect request:", req.url);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -18,11 +20,27 @@ serve(async (req) => {
   
   console.log("Redirect requested for path:", path);
   
+  if (!path) {
+    console.error("No path provided");
+    return new Response(
+      JSON.stringify({ error: "Invalid link" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
   // Create Supabase client
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") || "",
-    Deno.env.get("SUPABASE_ANON_KEY") || ""
-  );
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Missing Supabase credentials");
+    return new Response(
+      JSON.stringify({ error: "Server configuration error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     // Lookup the short_code in the database
@@ -80,13 +98,35 @@ serve(async (req) => {
       console.error("Error logging click:", clickError);
     }
 
+    // Ensure we have a valid URL to redirect to
+    let redirectUrl = link.original_url;
+    
+    // Add protocol if missing
+    if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+      redirectUrl = 'https://' + redirectUrl;
+    }
+    
+    try {
+      // Validate URL
+      new URL(redirectUrl);
+    } catch (e) {
+      console.error("Invalid redirect URL:", redirectUrl, e);
+      return new Response(
+        JSON.stringify({ error: "Invalid redirect URL" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Perform redirection to the original URL
-    console.log("Redirecting to:", link.original_url);
+    console.log("Redirecting to:", redirectUrl);
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        "Location": link.original_url
+        "Location": redirectUrl,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
       }
     });
   } catch (error) {

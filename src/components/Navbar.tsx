@@ -1,14 +1,26 @@
 
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { LogOut, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut, isLoading } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,11 +31,20 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
   const navLinks = [
     { name: "Home", path: "/" },
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Analytics", path: "/analytics" },
+    { name: "Dashboard", path: "/dashboard", requiresAuth: true },
   ];
+
+  // Filter nav links based on authentication
+  const filteredNavLinks = navLinks.filter(
+    link => !link.requiresAuth || (link.requiresAuth && user)
+  );
 
   return (
     <header
@@ -55,7 +76,7 @@ const Navbar = () => {
           </Link>
 
           <nav className="hidden md:flex gap-6">
-            {navLinks.map((link) => (
+            {filteredNavLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
@@ -82,14 +103,46 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-4">
-          <Link to="/login">
-            <Button variant="outline" size="sm">
-              Log in
-            </Button>
-          </Link>
-          <Link to="/login">
-            <Button size="sm">Sign up</Button>
-          </Link>
+          {!isLoading && (
+            <>
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <User className="h-4 w-4" />
+                      {user.email?.split('@')[0] || 'Account'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="cursor-pointer w-full">Dashboard</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/analytics" className="cursor-pointer w-full">Analytics</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button variant="outline" size="sm">
+                      Log in
+                    </Button>
+                  </Link>
+                  <Link to="/login">
+                    <Button size="sm">Sign up</Button>
+                  </Link>
+                </>
+              )}
+            </>
+          )}
         </div>
 
         <button
@@ -133,7 +186,7 @@ const Navbar = () => {
         className={`md:hidden overflow-hidden ${isScrolled ? "bg-white/80 backdrop-blur-lg" : "bg-white"}`}
       >
         <div className="container py-4 flex flex-col gap-4">
-          {navLinks.map((link) => (
+          {filteredNavLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
@@ -143,18 +196,32 @@ const Navbar = () => {
               {link.name}
             </Link>
           ))}
-          <div className="flex flex-col gap-2 mt-2">
-            <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-              <Button variant="outline" className="w-full" size="sm">
-                Log in
-              </Button>
-            </Link>
-            <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-              <Button className="w-full" size="sm">
-                Sign up
-              </Button>
-            </Link>
-          </div>
+          
+          {!isLoading && (
+            <>
+              {user ? (
+                <div className="flex flex-col gap-2 mt-2">
+                  <Button variant="outline" onClick={handleSignOut} className="w-full justify-start" size="sm">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Log out
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 mt-2">
+                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full" size="sm">
+                      Log in
+                    </Button>
+                  </Link>
+                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button className="w-full" size="sm">
+                      Sign up
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </motion.div>
     </header>

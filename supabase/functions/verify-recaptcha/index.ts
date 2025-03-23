@@ -38,8 +38,18 @@ serve(async (req) => {
     
     console.log("reCAPTCHA verification result:", recaptchaData);
 
+    // For reCAPTCHA v3, check the score (0.0 - 1.0)
+    // A higher score is more likely to be a human
+    // For this application, we'll accept scores above 0.3
+    const isHuman = recaptchaData.success && (!recaptchaData.score || recaptchaData.score > 0.3);
+
     return new Response(
-      JSON.stringify({ success: recaptchaData.success, score: recaptchaData.score }),
+      JSON.stringify({ 
+        success: isHuman, 
+        score: recaptchaData.score,
+        hostname: recaptchaData.hostname,
+        challenge_ts: recaptchaData.challenge_ts
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

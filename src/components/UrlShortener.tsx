@@ -9,7 +9,11 @@ import { shortenUrl } from "@/utils/api";
 import { useAuth } from "@/hooks/useAuth";
 import ReCAPTCHA from "react-google-recaptcha";
 
-const UrlShortener = () => {
+interface UrlShortenerProps {
+  onSuccess?: () => void;
+}
+
+const UrlShortener = ({ onSuccess }: UrlShortenerProps) => {
   const [url, setUrl] = useState("");
   const [customSlug, setCustomSlug] = useState("");
   const [shortenedUrl, setShortenedUrl] = useState("");
@@ -27,7 +31,18 @@ const UrlShortener = () => {
     
     // Validate URL
     try {
-      new URL(url);
+      // Add protocol if not present
+      let urlToValidate = url;
+      if (!urlToValidate.startsWith('http://') && !urlToValidate.startsWith('https://')) {
+        urlToValidate = 'https://' + urlToValidate;
+      }
+      
+      new URL(urlToValidate);
+      
+      // Update the URL with protocol if it was added
+      if (urlToValidate !== url) {
+        setUrl(urlToValidate);
+      }
     } catch (error) {
       toast.error("Please enter a valid URL");
       return;
@@ -47,6 +62,10 @@ const UrlShortener = () => {
       const result = await shortenUrl(url, customSlug, recaptchaToken || undefined);
       setShortenedUrl(result.shortUrl);
       toast.success("URL shortened successfully!");
+      
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       console.error("Error shortening URL:", error);
       // Toast error is handled in the API function
@@ -160,7 +179,14 @@ const UrlShortener = () => {
               <h3 className="text-xl font-semibold">URL Shortened Successfully!</h3>
               
               <div className="bg-muted rounded-lg p-4 flex items-center justify-between">
-                <span className="font-medium text-brand-blue truncate mr-2">{shortenedUrl}</span>
+                <a 
+                  href={shortenedUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-medium text-brand-blue truncate mr-2 hover:underline"
+                >
+                  {shortenedUrl}
+                </a>
                 <Button size="icon" variant="ghost" onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                 </Button>

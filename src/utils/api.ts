@@ -168,17 +168,17 @@ export const getLinkAnalytics = async (linkId: string, timeRange: string = "7d")
     }
     
     // Process clicks data for charts
-    const clickData = processClicksForTimeChart(clicks, startDate, endDate);
-    const deviceData = processClicksForDeviceChart(clicks);
-    const referrerData = processClicksForReferrerChart(clicks);
-    const browserData = processClicksForBrowserChart(clicks);
+    const clickData = processClicksForTimeChart(clicks || [], startDate, endDate);
+    const deviceData = processClicksForDeviceChart(clicks || []);
+    const referrerData = processClicksForReferrerChart(clicks || []);
+    const browserData = processClicksForBrowserChart(clicks || []);
     
     return {
       clickData,
       deviceData,
       referrerData,
       browserData,
-      totalClicks: clicks.length
+      totalClicks: clicks ? clicks.length : 0
     };
   } catch (error) {
     console.error("Error fetching analytics:", error);
