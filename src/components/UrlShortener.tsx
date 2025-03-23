@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Link } from "lucide-react";
+import { Link, Copy } from "lucide-react";
 import { shortenUrl } from "@/utils/api";
 import { useAuth } from "@/hooks/useAuth";
 import ReCAPTCHA from "react-google-recaptcha";

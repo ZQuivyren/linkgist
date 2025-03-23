@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQRCode } from "./qrCode";
@@ -293,9 +294,17 @@ const processClicksForBrowserChart = (clicks: any[]) => {
  */
 export const getUserLinks = async () => {
   try {
+    // Get the current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('links')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     
     if (error) {

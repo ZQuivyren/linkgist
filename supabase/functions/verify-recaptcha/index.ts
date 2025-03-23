@@ -15,6 +15,8 @@ serve(async (req) => {
 
   try {
     const { token } = await req.json();
+    
+    console.log("Verifying reCAPTCHA token:", token ? "token provided" : "no token");
 
     if (!token) {
       return new Response(
@@ -33,6 +35,8 @@ serve(async (req) => {
     });
 
     const recaptchaData = await recaptchaResponse.json();
+    
+    console.log("reCAPTCHA verification result:", recaptchaData);
 
     return new Response(
       JSON.stringify({ success: recaptchaData.success, score: recaptchaData.score }),
