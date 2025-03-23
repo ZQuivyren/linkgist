@@ -1,13 +1,62 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import UrlShortener from "@/components/UrlShortener";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowRight, Share2, Shield, Zap, ChevronRight, BarChart, Smartphone, Globe } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
+  const [stats, setStats] = useState({
+    totalClicks: 0,
+    mobileVisits: 0,
+    countries: 0
+  });
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        // Fetch total clicks
+        const { count: totalClicks, error: clicksError } = await supabase
+          .from('clicks')
+          .select('*', { count: 'exact', head: true });
+        
+        if (clicksError) throw clicksError;
+
+        // Fetch mobile visits
+        const { count: mobileVisits, error: mobileError } = await supabase
+          .from('clicks')
+          .select('*', { count: 'exact', head: true })
+          .eq('device', 'Mobile');
+        
+        if (mobileError) throw mobileError;
+
+        // Count unique countries
+        const { data: countries, error: countriesError } = await supabase
+          .from('clicks')
+          .select('country')
+          .not('country', 'is', null);
+        
+        if (countriesError) throw countriesError;
+        
+        const uniqueCountries = new Set(countries.map(c => c.country)).size;
+
+        setStats({
+          totalClicks: totalClicks || 0,
+          mobileVisits: mobileVisits || 0,
+          countries: uniqueCountries || 0
+        });
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+        // Fallback to default values if there's an error
+      }
+    }
+
+    fetchStats();
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* URL Shortener Section (Moved to top) */}
@@ -122,7 +171,7 @@ const Index = () => {
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Total Clicks</p>
-                    <div className="text-2xl font-bold">12,456</div>
+                    <div className="text-2xl font-bold">{stats.totalClicks.toLocaleString()}</div>
                   </div>
                   <div className="rounded-full p-3 bg-primary/10">
                     <BarChart className="h-5 w-5 text-brand-blue" />
@@ -135,7 +184,7 @@ const Index = () => {
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Mobile Visits</p>
-                    <div className="text-2xl font-bold">7,231</div>
+                    <div className="text-2xl font-bold">{stats.mobileVisits.toLocaleString()}</div>
                   </div>
                   <div className="rounded-full p-3 bg-primary/10">
                     <Smartphone className="h-5 w-5 text-brand-blue" />
@@ -148,7 +197,7 @@ const Index = () => {
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Countries Reached</p>
-                    <div className="text-2xl font-bold">93</div>
+                    <div className="text-2xl font-bold">{stats.countries}</div>
                   </div>
                   <div className="rounded-full p-3 bg-primary/10">
                     <Globe className="h-5 w-5 text-brand-blue" />

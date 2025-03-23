@@ -39,6 +39,7 @@ const Navbar = () => {
   const navLinks = [
     { name: "Home", path: "/" },
     { name: "Dashboard", path: "/dashboard", requiresAuth: true },
+    { name: "Analytics", path: "/analytics", requiresAuth: true },
   ];
 
   // Filter nav links based on authentication

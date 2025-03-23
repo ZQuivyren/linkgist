@@ -9,7 +9,7 @@ import { BarChart, LineChart, PieChart, Smartphone, Globe, ArrowUpRight } from "
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { getUserLinks } from "@/utils/api";
+import { getUserLinks, getLinkAnalytics } from "@/utils/api";
 import { toast } from "sonner";
 
 const AnalyticsStat = ({ icon, label, value, change, changeDirection }: { 
@@ -49,6 +49,7 @@ const Analytics = () => {
   const [selectedLink, setSelectedLink] = useState<string>("");
   const [timeRange, setTimeRange] = useState("30d");
   const [isLoading, setIsLoading] = useState(true);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
   
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -66,6 +67,12 @@ const Analytics = () => {
     }
   }, [user, authLoading, navigate]);
   
+  useEffect(() => {
+    if (selectedLink && timeRange) {
+      fetchAnalyticsData();
+    }
+  }, [selectedLink, timeRange]);
+  
   const fetchLinks = async () => {
     setIsLoading(true);
     try {
@@ -78,6 +85,19 @@ const Analytics = () => {
     } catch (error) {
       console.error("Error fetching links:", error);
       toast.error("Failed to fetch your links.");
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchAnalyticsData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getLinkAnalytics(selectedLink, timeRange);
+      setAnalyticsData(data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching analytics data:", error);
+      toast.error("Failed to fetch analytics data.");
       setIsLoading(false);
     }
   };
