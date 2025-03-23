@@ -15,34 +15,34 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const url = new URL(req.url);
-  const path = url.pathname.split('/').pop() || '';
-  
-  console.log("Redirect requested for path:", path);
-  
-  if (!path) {
-    console.error("No path provided");
-    return new Response(
-      JSON.stringify({ error: "Invalid link" }),
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
-  // Create Supabase client
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  
-  if (!supabaseUrl || !supabaseKey) {
-    console.error("Missing Supabase credentials");
-    return new Response(
-      JSON.stringify({ error: "Server configuration error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
   try {
+    const url = new URL(req.url);
+    const path = url.pathname.split('/').pop() || '';
+    
+    console.log("Redirect requested for path:", path);
+    
+    if (!path) {
+      console.error("No path provided");
+      return new Response(
+        JSON.stringify({ error: "Invalid link" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Missing Supabase credentials");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // Lookup the short_code in the database
     const { data: link, error } = await supabase
       .from('links')
