@@ -120,7 +120,7 @@ serve(async (req) => {
     // Perform redirection to the original URL
     console.log("Redirecting to:", redirectUrl);
     return new Response(null, {
-      status: 302,
+      status: 302, // Use 302 Found for temporary redirect
       headers: {
         ...corsHeaders,
         "Location": redirectUrl,
