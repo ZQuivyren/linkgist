@@ -43,6 +43,8 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log("Looking up short_code:", path);
+
     // Lookup the short_code in the database
     const { data: link, error } = await supabase
       .from('links')
@@ -50,53 +52,24 @@ serve(async (req) => {
       .eq('short_code', path)
       .single();
 
-    if (error || !link) {
-      console.error("Link not found:", path, error);
+    if (error) {
+      console.error("Database error when looking up link:", error);
+      return new Response(
+        JSON.stringify({ error: "Error looking up link", details: error.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!link) {
+      console.error("Link not found:", path);
       return new Response(
         JSON.stringify({ error: "Link not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Link found:", link.original_url);
-
-    // Update the click count
-    const { error: updateError } = await supabase
-      .from('links')
-      .update({ clicks: link.clicks + 1 })
-      .eq('id', link.id);
-
-    if (updateError) {
-      console.error("Error updating click count:", updateError);
-    }
-
-    // Track analytics data
-    const userAgent = req.headers.get('user-agent') || '';
-    const referer = req.headers.get('referer') || '';
-    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
-
-    console.log("Tracking click data", { 
-      referer, 
-      ip: ip.split(',')[0].trim(),
-      browser: getBrowser(userAgent),
-      device: getDevice(userAgent)
-    });
-
-    // Insert click data
-    const { error: clickError } = await supabase
-      .from('clicks')
-      .insert({
-        link_id: link.id,
-        referrer: referer,
-        ip: ip.split(',')[0].trim(), // Get first IP if multiple are provided
-        browser: getBrowser(userAgent),
-        device: getDevice(userAgent),
-        os: getOS(userAgent)
-      });
-
-    if (clickError) {
-      console.error("Error logging click:", clickError);
-    }
+    console.log("Link found:", link);
+    console.log("Original URL:", link.original_url);
 
     // Ensure we have a valid URL to redirect to
     let redirectUrl = link.original_url;
@@ -106,21 +79,44 @@ serve(async (req) => {
       redirectUrl = 'https://' + redirectUrl;
     }
     
-    try {
-      // Validate URL
-      new URL(redirectUrl);
-    } catch (e) {
-      console.error("Invalid redirect URL:", redirectUrl, e);
-      return new Response(
-        JSON.stringify({ error: "Invalid redirect URL" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Update the click count in the background
+    // We don't await this to avoid delaying the redirect
+    supabase
+      .from('links')
+      .update({ clicks: link.clicks + 1 })
+      .eq('id', link.id)
+      .then(({ error }) => {
+        if (error) {
+          console.error("Error updating click count:", error);
+        }
+      });
+
+    // Track analytics data in the background
+    const userAgent = req.headers.get('user-agent') || '';
+    const referer = req.headers.get('referer') || '';
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
+
+    supabase
+      .from('clicks')
+      .insert({
+        link_id: link.id,
+        referrer: referer,
+        ip: ip.split(',')[0].trim(), // Get first IP if multiple are provided
+        browser: getBrowser(userAgent),
+        device: getDevice(userAgent),
+        os: getOS(userAgent)
+      })
+      .then(({ error: clickError }) => {
+        if (clickError) {
+          console.error("Error logging click:", clickError);
+        }
+      });
 
     // Perform redirection to the original URL
     console.log("Redirecting to:", redirectUrl);
+    
     return new Response(null, {
-      status: 302, // Use 302 Found for temporary redirect
+      status: 302, // HTTP 302 Found (temporary redirect)
       headers: {
         ...corsHeaders,
         "Location": redirectUrl,
@@ -132,7 +128,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error during redirection:", error);
     return new Response(
-      JSON.stringify({ error: "Server error" }),
+      JSON.stringify({ error: "Server error", details: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
